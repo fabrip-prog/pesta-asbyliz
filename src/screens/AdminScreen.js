@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X, Trash2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createAppointment, getAppointments, getServices, createService, deleteService, addGalleryWork, getGallery, getAvailableSlots, saveAvailableSlots } from "@/app/actions";
+import { createAppointment, getAppointments, getServices, createService, deleteService, addGalleryWork, getGallery, getAvailableSlots, saveAvailableSlots, checkDbStatus, deleteAvailableSlot } from "@/app/actions";
 
 export function AdminScreen() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -14,6 +14,8 @@ export function AdminScreen() {
   const [appointments, setAppointments] = useState([]);
   const [services, setServices] = useState([]);
   const [gallery, setGallery] = useState([]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [dbStatus, setDbStatus] = useState({ hasToken: true });
   
   const [formData, setFormData] = useState({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
   const [serviceData, setServiceData] = useState({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
@@ -22,10 +24,16 @@ export function AdminScreen() {
   
   const router = useRouter();
 
-  useEffect(() => {
+  const loadData = () => {
     getAppointments().then(data => setAppointments(data));
     getServices().then(data => setServices(data));
     getGallery().then(data => setGallery(data));
+    getAvailableSlots().then(data => setAvailableSlots(data));
+    checkDbStatus().then(data => setDbStatus(data));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleLogout = () => {
@@ -80,6 +88,14 @@ export function AdminScreen() {
     setShowAvailabilityModal(false);
     alert("Horarios guardados correctamente");
     setAvailabilityData({ date: "", times: "09:00, 10:30, 14:00, 16:00" });
+    loadData(); // Reload available slots
+  };
+
+  const handleDeleteAvailability = async (date) => {
+    if(confirm(`¿Seguro que deseas eliminar los horarios del ${date}?`)) {
+      await deleteAvailableSlot(date);
+      loadData();
+    }
   };
 
   const formatPrice = (price) => {
@@ -125,6 +141,12 @@ export function AdminScreen() {
 
         {activeTab === "calendar" && (
           <div className="animate-in fade-in duration-300">
+            {!dbStatus.hasToken && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 border border-red-200">
+                <p className="font-bold">⚠️ Base de datos no conectada</p>
+                <p className="text-sm">Vercel Blob no está funcionando. Los cambios no se guardarán. Haz "Redeploy" en Vercel para aplicar la conexión.</p>
+              </div>
+            )}
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-foreground">Agenda de Turnos</h1>
               <div className="flex gap-2">
@@ -136,7 +158,32 @@ export function AdminScreen() {
                 </button>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 min-h-[500px]">
+            
+            {/* Horarios Libres */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 mb-6">
+              <h3 className="font-medium text-foreground mb-4">Días y Horarios Disponibles para Reservar</h3>
+              {availableSlots && availableSlots.length > 0 ? (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {availableSlots.map(slot => (
+                    <div key={slot.date} className="bg-secondary/10 border border-primary/20 rounded-xl p-3 min-w-[150px] relative">
+                      <button onClick={() => handleDeleteAvailability(slot.date)} className="absolute top-2 right-2 text-red-400 hover:text-red-600">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <p className="font-semibold text-primary">{slot.date}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {slot.times.map(t => (
+                          <span key={t} className="text-xs bg-white border border-primary/10 px-2 py-1 rounded-md">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-foreground/60 text-sm">No has cargado horarios libres aún. Haz clic en "Cargar Horarios Libres" arriba.</p>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 min-h-[400px]">
               <h3 className="font-medium text-foreground mb-4">Turnos Agendados ({appointments.length})</h3>
               {appointments.length > 0 ? (
                 <div className="space-y-3">
@@ -154,7 +201,7 @@ export function AdminScreen() {
                   ))}
                 </div>
               ) : (
-                <p className="text-foreground/60 text-center mt-20">No hay turnos registrados aún.</p>
+                <p className="text-foreground/60 text-center mt-10">No hay turnos registrados aún.</p>
               )}
             </div>
           </div>

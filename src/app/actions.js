@@ -105,3 +105,20 @@ export async function saveAvailableSlots(date, times) {
   revalidatePath("/admin/dashboard");
   return true;
 }
+
+export async function deleteAvailableSlot(date) {
+  const db = await getDb();
+  if(db.availableSlots) {
+    db.availableSlots = db.availableSlots.filter(s => s.date !== date);
+    await saveDb(db);
+  }
+  revalidatePath("/reserva");
+  revalidatePath("/admin/dashboard");
+  return true;
+}
+
+export async function checkDbStatus() {
+  return {
+    hasToken: !!process.env.BLOB_READ_WRITE_TOKEN
+  };
+}
