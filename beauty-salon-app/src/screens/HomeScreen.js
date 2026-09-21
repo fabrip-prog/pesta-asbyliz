@@ -137,7 +137,7 @@ export function HomeScreen() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-foreground text-background py-12">
+      <footer className="bg-foreground text-background py-12 relative group">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-6">
             <Sparkles className="h-6 w-6 text-primary" />
@@ -148,15 +148,17 @@ export function HomeScreen() {
           </p>
           <div className="pt-8 border-t border-background/10 text-sm text-background/40 relative">
             &copy; {new Date().getFullYear()} Pestañas By Liz. Todos los derechos reservados.
-            {/* Hidden admin access */}
-            <Link 
-              href="/admin" 
-              className="absolute right-0 bottom-0 w-8 h-8 opacity-0"
-              title="Acceso Admin"
-            >
-              Admin
-            </Link>
           </div>
+        </div>
+        
+        {/* Subtle admin access */}
+        <div className="absolute bottom-4 right-4 opacity-5 hover:opacity-100 transition-opacity">
+          <Link href="/admin" title="Panel de Administración">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </Link>
         </div>
       </footer>
     </div>
