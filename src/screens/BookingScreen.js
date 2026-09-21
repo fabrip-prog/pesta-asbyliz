@@ -33,11 +33,32 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
     handleNext();
   };
 
-  const handleConfirmReservation = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirmReservation = async () => {
+    setIsSubmitting(true);
+    
+    // IMPORTANTE: Guardar el turno en la base de datos
+    try {
+      const { createAppointment } = await import("@/app/actions");
+      await createAppointment({
+        clientName: bookingData.name,
+        clientPhone: bookingData.phone,
+        date: bookingData.date,
+        startTime: bookingData.time,
+        service: bookingData.service,
+        serviceId: bookingData.service.id
+      });
+    } catch (e) {
+      console.error("Error al guardar el turno:", e);
+    }
+    
     // Aquí se generaría el link de WhatsApp manual
     const msg = `¡Hola! Quiero confirmar mi turno para ${bookingData.service?.name} el día ${bookingData.date} a las ${bookingData.time}. Mi nombre es ${bookingData.name}. Adjunto el comprobante de pago de la seña (${formatPrice(bookingData.service?.deposit)}).`;
     const whatsappUrl = `https://wa.me/3454013554?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
+    
+    setIsSubmitting(false);
   };
 
   return (
@@ -287,9 +308,10 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
               <button onClick={handleBack} className="px-6 py-3 rounded-full font-medium text-foreground/70 hover:bg-black/5 transition-colors w-full sm:w-auto">Volver</button>
               <button 
                 onClick={handleConfirmReservation}
-                className="px-8 py-3 rounded-full bg-[#25D366] text-white font-medium shadow-md transition-colors hover:bg-[#20bd5a] flex items-center justify-center w-full sm:w-auto gap-2"
+                disabled={isSubmitting}
+                className="px-8 py-3 rounded-full bg-[#25D366] text-white font-medium shadow-md transition-colors hover:bg-[#20bd5a] flex items-center justify-center w-full sm:w-auto gap-2 disabled:opacity-50"
               >
-                Enviar Comprobante por WhatsApp
+                {isSubmitting ? "Procesando..." : "Enviar Comprobante por WhatsApp"}
               </button>
             </div>
           </div>
