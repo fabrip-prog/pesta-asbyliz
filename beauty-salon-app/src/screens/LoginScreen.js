@@ -12,7 +12,7 @@ export function LoginScreen() {
   const handleLogin = (e) => {
     e.preventDefault();
     // TODO: Implement actual authentication
-    if (username === "admin" && password === "admin123") {
+    if (username === "lizfonseca7" && password === "bonnie18") {
       document.cookie = "admin_auth=true; path=/";
       router.push("/admin/dashboard");
     } else {
