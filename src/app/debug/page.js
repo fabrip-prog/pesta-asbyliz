@@ -33,9 +33,21 @@ export default async function DebugPage() {
       // Attempt a test write
       try {
         const { put } = await import('@vercel/blob');
-        const testPut = await put('test-debug.txt', 'hello', { access: 'public', token: process.env.BLOB_READ_WRITE_TOKEN });
-        output.testWrite = "Success";
-        output.testWriteUrl = testPut.url;
+        let putOptions = { access: 'public', token: process.env.BLOB_READ_WRITE_TOKEN };
+        try {
+          const testPut = await put('test-debug.txt', 'hello', putOptions);
+          output.testWrite = "Success (Public)";
+          output.testWriteUrl = testPut.url;
+        } catch (err) {
+          if (err.message && err.message.includes('private store')) {
+            putOptions.access = 'private';
+            const testPut = await put('test-debug.txt', 'hello', putOptions);
+            output.testWrite = "Success (Private)";
+            output.testWriteUrl = testPut.url;
+          } else {
+            throw err;
+          }
+        }
       } catch (writeErr) {
         output.testWrite = "Failed";
         output.testWriteError = writeErr.message;
