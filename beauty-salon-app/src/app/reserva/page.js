@@ -7,3 +7,4 @@ export default async function ReservaPage() {
   
   return <BookingScreen services={services} availableSlots={availableSlots} />;
 }
+export const dynamic = 'force-dynamic';

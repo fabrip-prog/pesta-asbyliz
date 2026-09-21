@@ -5,3 +5,4 @@ export default async function Home() {
   const appointments = await getAppointments();
   return <HomeScreen appointments={appointments} />;
 }
+export const dynamic = 'force-dynamic';
