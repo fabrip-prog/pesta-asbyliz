@@ -18,14 +18,20 @@ export default async function DebugPage() {
         const latestBlob = dbBlobs[0];
         output.latestBlob = latestBlob;
         
-        const response = await fetch(latestBlob.url, { cache: 'no-store' });
+        const response = await fetch(latestBlob.downloadUrl || latestBlob.url, { 
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+        });
         output.data = await response.json();
       } else {
         // Fallback to data.json
         const oldBlob = blobs.find(b => b.pathname === 'data.json');
         if (oldBlob) {
            output.oldBlob = oldBlob;
-           const response = await fetch(oldBlob.url, { cache: 'no-store' });
+           const response = await fetch(oldBlob.downloadUrl || oldBlob.url, { 
+             cache: 'no-store',
+             headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+           });
            output.data = await response.json();
         }
       }

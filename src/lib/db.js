@@ -35,7 +35,18 @@ export async function getDb() {
         const latestBlob = dbBlobs[0];
         
         const fetchUrl = latestBlob.downloadUrl || latestBlob.url;
-        const response = await fetch(fetchUrl, { cache: 'no-store' });
+        const response = await fetch(fetchUrl, { 
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+          }
+        });
+        
+        if (!response.ok) {
+           console.error("Vercel Blob fetch failed:", response.status, await response.text());
+           return cloneDefault();
+        }
+        
         return await response.json();
       }
       return cloneDefault();
