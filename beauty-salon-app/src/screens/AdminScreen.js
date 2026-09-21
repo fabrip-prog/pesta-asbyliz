@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X, Trash2 } from "lucide-react";
+import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X, Trash2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createAppointment, getAppointments, getServices, createService, deleteService, addGalleryWork, getGallery } from "@/app/actions";
+import { createAppointment, getAppointments, getServices, createService, deleteService, addGalleryWork, getGallery, getAvailableSlots, saveAvailableSlots } from "@/app/actions";
 
 export function AdminScreen() {
   const [activeTab, setActiveTab] = useState("calendar");
   const [showModal, setShowModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   
   const [appointments, setAppointments] = useState([]);
   const [services, setServices] = useState([]);
@@ -17,6 +18,7 @@ export function AdminScreen() {
   const [formData, setFormData] = useState({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
   const [serviceData, setServiceData] = useState({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
   const [galleryData, setGalleryData] = useState({ title: "", description: "", image: "" });
+  const [availabilityData, setAvailabilityData] = useState({ date: "", times: "09:00, 10:30, 14:00, 16:00" });
   
   const router = useRouter();
 
@@ -71,13 +73,22 @@ export function AdminScreen() {
     setGalleryData({ title: "", description: "", image: "" });
   };
 
+  const handleSaveAvailability = async (e) => {
+    e.preventDefault();
+    const timesArray = availabilityData.times.split(",").map(t => t.trim()).filter(t => t.length > 0);
+    await saveAvailableSlots(availabilityData.date, timesArray);
+    setShowAvailabilityModal(false);
+    alert("Horarios guardados correctamente");
+    setAvailabilityData({ date: "", times: "09:00, 10:30, 14:00, 16:00" });
+  };
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
   };
 
   return (
     <div className="min-h-screen bg-secondary/10 flex relative font-sans">
-      {/* Sidebar */}
+      {/* Sidebar and rest of UI remains the same... */}
       <aside className="w-64 bg-white border-r border-primary/20 flex flex-col hidden md:flex">
         <div className="p-6 border-b border-primary/10">
           <h2 className="text-xl font-bold text-foreground">Panel Admin</h2>
@@ -116,12 +127,17 @@ export function AdminScreen() {
           <div className="animate-in fade-in duration-300">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-foreground">Agenda de Turnos</h1>
-              <button onClick={() => setShowModal(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Nuevo Manual
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowAvailabilityModal(true)} className="border border-primary text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/5 flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Cargar Horarios Libres
+                </button>
+                <button onClick={() => setShowModal(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2">
+                  <Plus className="h-4 w-4" /> Turno Manual
+                </button>
+              </div>
             </div>
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 min-h-[500px]">
-              <h3 className="font-medium text-foreground mb-4">Turnos Registrados ({appointments.length})</h3>
+              <h3 className="font-medium text-foreground mb-4">Turnos Agendados ({appointments.length})</h3>
               {appointments.length > 0 ? (
                 <div className="space-y-3">
                   {appointments.slice().reverse().map((appt, i) => (
@@ -305,6 +321,30 @@ export function AdminScreen() {
                 </div>
               </div>
               <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Servicio</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Cargar Horarios */}
+      {showAvailabilityModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Cargar Horarios Libres</h3>
+              <button onClick={() => setShowAvailabilityModal(false)} className="text-foreground/50 hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="text-sm text-foreground/60 mb-4">Define qué horarios mostrarás disponibles para reservar en un día específico.</p>
+            <form onSubmit={handleSaveAvailability} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Día (Fecha)</label>
+                <input required type="date" value={availabilityData.date} onChange={e => setAvailabilityData({...availabilityData, date: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Horarios Disponibles</label>
+                <input required type="text" value={availabilityData.times} onChange={e => setAvailabilityData({...availabilityData, times: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="09:00, 10:30, 14:00" />
+                <p className="text-xs text-foreground/50 mt-1">Separa las horas con comas (ej. 09:00, 10:30, 15:00)</p>
+              </div>
+              <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Disponibilidad</button>
             </form>
           </div>
         </div>

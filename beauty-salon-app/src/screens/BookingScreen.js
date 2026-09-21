@@ -4,28 +4,22 @@ import { useState } from "react";
 import { ArrowLeft, Check, CalendarDays, Clock, User, CreditCard, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-export function BookingScreen() {
+export function BookingScreen({ services = [], availableSlots = [] }) {
   const [step, setStep] = useState(1);
   const [bookingData, setBookingData] = useState({
     service: null,
     date: "",
     time: "",
     name: "",
-    phone: "",
-    email: ""
+    phone: ""
   });
 
-  // Mock de servicios por ahora
-  const mockServices = [
-    { id: 1, name: "Extensiones Clásicas", category: "pestanas", price: 15000, deposit: 5000, duration: "90 min" },
-    { id: 2, name: "Volumen Ruso", category: "pestanas", price: 18000, deposit: 5000, duration: "120 min" },
-    { id: 3, name: "Perfilado y Laminado", category: "cejas", price: 8000, deposit: 3000, duration: "45 min" },
-    { id: 4, name: "Limpieza Facial Profunda", category: "cosmetologia", price: 12000, deposit: 4000, duration: "60 min" }
-  ];
-
-  // Mock de fechas (próximos 3 días)
-  const availableDates = ["2026-10-01", "2026-10-02", "2026-10-03"];
-  const availableTimes = ["09:00", "10:30", "14:00", "16:00", "17:30"];
+  // Extraemos fechas que tengan horarios disponibles
+  const availableDates = availableSlots.map(s => s.date).sort();
+  // Al seleccionar una fecha, obtenemos sus horarios
+  const availableTimes = bookingData.date 
+    ? (availableSlots.find(s => s.date === bookingData.date)?.times || []) 
+    : [];
 
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
@@ -95,7 +89,7 @@ export function BookingScreen() {
           <div className="animate-in slide-in-from-right-4 duration-300">
             <h2 className="text-2xl font-bold text-foreground mb-6">¿Qué servicio deseas realizarte?</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockServices.map(service => (
+              {services.map(service => (
                 <button
                   key={service.id}
                   onClick={() => handleServiceSelect(service)}
