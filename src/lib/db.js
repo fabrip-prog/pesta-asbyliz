@@ -26,15 +26,14 @@ export async function getDb() {
   
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
+      const { list } = await import('@vercel/blob');
       const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
-      // Find the most recent db-data file (in case of multiples, though we try to keep only 1)
-      const dbBlobs = blobs.filter(b => b.pathname.startsWith('db-data'));
-      if (dbBlobs.length > 0) {
-        // Sort by uploadedAt descending to get the newest
-        dbBlobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-        const latestBlob = dbBlobs[0];
-        
-        const fetchUrl = latestBlob.downloadUrl || latestBlob.url;
+      // Buscamos nuestro archivo único de base de datos
+      const dbBlob = blobs.find(b => b.pathname === 'database.json');
+      
+      if (dbBlob) {
+        const fetchUrl = dbBlob.downloadUrl || dbBlob.url;
+        // Al ser un blob privado, pasamos el token y evitamos caché
         const response = await fetch(fetchUrl, { 
           cache: 'no-store',
           headers: {
@@ -59,6 +58,8 @@ export async function getDb() {
       console.warn("Falta BLOB_READ_WRITE_TOKEN en Vercel. Devolviendo datos por defecto.");
       return cloneDefault();
     }
+    const fs = await import('fs');
+    const path = await import('path');
     const dataFile = path.join(process.cwd(), 'data.json');
     if (!fs.existsSync(dataFile)) {
       fs.writeFileSync(dataFile, JSON.stringify(defaultData, null, 2));
@@ -71,30 +72,14 @@ export async function getDb() {
 export async function saveDb(data) {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
-      const oldBlobs = blobs.filter(b => b.pathname.startsWith('db-data'));
-      
-      let putOptions = {
-        access: 'public',
+      const { put } = await import('@vercel/blob');
+      // Sobrescribimos siempre el mismo archivo para evitar desincronización
+      // Como es privado, no sufre el caché abusivo del CDN de Vercel.
+      await put('database.json', JSON.stringify(data), {
+        access: 'private',
+        addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN
-      };
-      
-      try {
-        await put('db-data.json', JSON.stringify(data), putOptions);
-      } catch (err) {
-        if (err.message && err.message.includes('private store')) {
-          putOptions.access = 'private';
-          await put('db-data.json', JSON.stringify(data), putOptions);
-        } else {
-          throw err;
-        }
-      }
-      
-      // Delete old files to clean up storage
-      if (oldBlobs.length > 0) {
-        const { del } = await import('@vercel/blob');
-        await del(oldBlobs.map(b => b.url), { token: process.env.BLOB_READ_WRITE_TOKEN });
-      }
+      });
     } catch (e) {
       console.error("Vercel Blob PUT error:", e);
     }
@@ -103,6 +88,8 @@ export async function saveDb(data) {
       console.warn("Intento de guardar sin BLOB_READ_WRITE_TOKEN en producción. Ignorado para evitar crash.");
       return;
     }
+    const fs = await import('fs');
+    const path = await import('path');
     const dataFile = path.join(process.cwd(), 'data.json');
     fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
   }
