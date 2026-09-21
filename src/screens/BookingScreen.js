@@ -36,7 +36,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
   const handleConfirmReservation = () => {
     // Aquí se generaría el link de WhatsApp manual
     const msg = `¡Hola! Quiero confirmar mi turno para ${bookingData.service?.name} el día ${bookingData.date} a las ${bookingData.time}. Mi nombre es ${bookingData.name}. Adjunto el comprobante de pago de la seña (${formatPrice(bookingData.service?.deposit)}).`;
-    const whatsappUrl = `https://wa.me/5491112345678?text=${encodeURIComponent(msg)}`;
+    const whatsappUrl = `https://wa.me/3454013554?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -190,7 +190,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
                   <input 
                     type="text" 
                     className="w-full px-4 py-3 rounded-xl border border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    placeholder="Ej. María Pérez"
+                    placeholder="Ingresa tu nombre"
                     value={bookingData.name}
                     onChange={e => setBookingData({...bookingData, name: e.target.value})}
                   />
@@ -200,7 +200,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
                   <input 
                     type="tel" 
                     className="w-full px-4 py-3 rounded-xl border border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    placeholder="Ej. +54 9 11 1234-5678"
+                    placeholder="Ingresa tu teléfono"
                     value={bookingData.phone}
                     onChange={e => setBookingData({...bookingData, phone: e.target.value})}
                   />
@@ -274,7 +274,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
               
               {/* Botón de Mercado Pago simulado */}
               <a 
-                href="link.mercadopago.com.ar/pestanasbyliz" 
+                href="https://mpago.la/1KJGLhG" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="block w-full text-center bg-[#009EE3] text-white py-3 rounded-xl font-medium hover:bg-[#0088CC] transition-colors mb-3"
