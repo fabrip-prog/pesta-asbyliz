@@ -3,18 +3,24 @@
 import { useState, useEffect } from "react";
 import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createAppointment, getAppointments } from "@/app/actions";
+import { createAppointment, getAppointments, getServices, createService } from "@/app/actions";
 
 export function AdminScreen() {
   const [activeTab, setActiveTab] = useState("calendar");
   const [showModal, setShowModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  
   const [appointments, setAppointments] = useState([]);
+  const [services, setServices] = useState([]);
+  
   const [formData, setFormData] = useState({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
+  const [serviceData, setServiceData] = useState({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
   
   const router = useRouter();
 
   useEffect(() => {
     getAppointments().then(data => setAppointments(data));
+    getServices().then(data => setServices(data));
   }, []);
 
   const handleLogout = () => {
@@ -22,12 +28,24 @@ export function AdminScreen() {
     router.push("/admin");
   };
 
-  const handleCreate = async (e) => {
+  const handleCreateAppointment = async (e) => {
     e.preventDefault();
     const newAppt = await createAppointment(formData);
     setAppointments([...appointments, newAppt]);
     setShowModal(false);
     setFormData({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
+  };
+
+  const handleCreateService = async (e) => {
+    e.preventDefault();
+    const newSvc = await createService(serviceData);
+    setServices([...services, newSvc]);
+    setShowServiceModal(false);
+    setServiceData({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
   };
 
   return (
@@ -154,28 +172,24 @@ export function AdminScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-primary/5">
-                    <td className="p-4 text-sm">Extensiones Clásicas</td>
-                    <td className="p-4 text-sm">Pestañas</td>
-                    <td className="p-4 text-sm font-medium">$15.000</td>
-                    <td className="p-4 text-sm text-primary font-medium">$5.000</td>
-                    <td className="p-4">
-                      <button className="text-blue-500 hover:text-blue-700 p-1"><Edit className="h-4 w-4" /></button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-primary/5">
-                    <td className="p-4 text-sm">Perfilado de Cejas</td>
-                    <td className="p-4 text-sm">Cejas</td>
-                    <td className="p-4 text-sm font-medium">$8.000</td>
-                    <td className="p-4 text-sm text-primary font-medium">$3.000</td>
-                    <td className="p-4">
-                      <button className="text-blue-500 hover:text-blue-700 p-1"><Edit className="h-4 w-4" /></button>
-                    </td>
-                  </tr>
+                  {services.map((svc) => (
+                    <tr key={svc.id} className="border-b border-primary/5">
+                      <td className="p-4 text-sm">{svc.name}</td>
+                      <td className="p-4 text-sm capitalize">{svc.category}</td>
+                      <td className="p-4 text-sm font-medium">{formatPrice(svc.price)}</td>
+                      <td className="p-4 text-sm text-primary font-medium">{formatPrice(svc.deposit)}</td>
+                      <td className="p-4">
+                        <button className="text-blue-500 hover:text-blue-700 p-1"><Edit className="h-4 w-4" /></button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
               <div className="p-4 bg-secondary/10">
-                <button className="text-sm font-medium text-primary flex items-center gap-1 hover:text-accent">
+                <button 
+                  onClick={() => setShowServiceModal(true)}
+                  className="text-sm font-medium text-primary flex items-center gap-1 hover:text-accent"
+                >
                   <Plus className="h-4 w-4" /> Agregar nuevo servicio
                 </button>
               </div>
@@ -192,7 +206,7 @@ export function AdminScreen() {
               <h3 className="text-xl font-bold">Agregar Turno Manual</h3>
               <button onClick={() => setShowModal(false)} className="text-foreground/50 hover:text-foreground"><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleCreateAppointment} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre</label>
                 <input required type="text" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
@@ -212,6 +226,43 @@ export function AdminScreen() {
                 </div>
               </div>
               <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Turno</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Agregar Servicio */}
+      {showServiceModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Agregar Servicio</h3>
+              <button onClick={() => setShowServiceModal(false)} className="text-foreground/50 hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <form onSubmit={handleCreateService} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nombre del Servicio</label>
+                <input required type="text" value={serviceData.name} onChange={e => setServiceData({...serviceData, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Categoría</label>
+                <select required value={serviceData.category} onChange={e => setServiceData({...serviceData, category: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
+                  <option value="pestanas">Pestañas</option>
+                  <option value="cejas">Cejas</option>
+                  <option value="cosmetologia">Cosmetología</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Precio Total ($)</label>
+                  <input required type="number" min="0" value={serviceData.price} onChange={e => setServiceData({...serviceData, price: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Seña Requerida ($)</label>
+                  <input required type="number" min="0" value={serviceData.deposit} onChange={e => setServiceData({...serviceData, deposit: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Servicio</button>
             </form>
           </div>
         </div>

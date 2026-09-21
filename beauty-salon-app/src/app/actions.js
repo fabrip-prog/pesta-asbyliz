@@ -21,6 +21,21 @@ export async function updateService(id, data) {
   return false;
 }
 
+export async function createService(data) {
+  const db = getDb();
+  const newService = {
+    id: Date.now(),
+    ...data,
+    price: Number(data.price),
+    deposit: Number(data.deposit)
+  };
+  db.services.push(newService);
+  saveDb(db);
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/reserva");
+  return newService;
+}
+
 export async function getAppointments() {
   const db = getDb();
   return db.appointments;
