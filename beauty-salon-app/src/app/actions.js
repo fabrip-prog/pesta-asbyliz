@@ -4,16 +4,16 @@ import { getDb, saveDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function getServices() {
-  const db = getDb();
+  const db = await getDb();
   return db.services;
 }
 
 export async function updateService(id, data) {
-  const db = getDb();
+  const db = await getDb();
   const index = db.services.findIndex(s => s.id === id);
   if (index !== -1) {
     db.services[index] = { ...db.services[index], ...data };
-    saveDb(db);
+    await saveDb(db);
     revalidatePath("/admin/dashboard");
     revalidatePath("/reserva");
     return true;
@@ -22,7 +22,7 @@ export async function updateService(id, data) {
 }
 
 export async function createService(data) {
-  const db = getDb();
+  const db = await getDb();
   const newService = {
     id: Date.now(),
     ...data,
@@ -30,29 +30,78 @@ export async function createService(data) {
     deposit: Number(data.deposit)
   };
   db.services.push(newService);
-  saveDb(db);
+  await saveDb(db);
   revalidatePath("/admin/dashboard");
   revalidatePath("/reserva");
   return newService;
 }
 
 export async function getAppointments() {
-  const db = getDb();
+  const db = await getDb();
   return db.appointments;
 }
 
 export async function createAppointment(data) {
-  const db = getDb();
+  const db = await getDb();
   const newAppointment = {
     id: Date.now(),
     ...data,
     status: "PENDING",
     createdAt: new Date().toISOString()
   };
+  if(!db.appointments) db.appointments = [];
   db.appointments.push(newAppointment);
-  saveDb(db);
+  await saveDb(db);
   revalidatePath("/admin/dashboard");
+  revalidatePath("/");
   return newAppointment;
 }
-export async function deleteService(id) { const db = getDb(); db.services = db.services.filter(s => s.id !== id); saveDb(db); revalidatePath("/admin/dashboard"); revalidatePath("/reserva"); return true; } export async function getGallery() { const db = getDb(); return db.gallery || []; } export async function addGalleryWork(data) { const db = getDb(); if (!db.gallery) db.gallery = []; const newItem = { id: Date.now(), ...data, createdAt: new Date().toISOString() }; db.gallery.push(newItem); saveDb(db); revalidatePath("/admin/dashboard"); revalidatePath("/"); return newItem; }
-export async function getAvailableSlots() { const db = getDb(); return db.availableSlots || []; } export async function saveAvailableSlots(date, times) { const db = getDb(); if(!db.availableSlots) db.availableSlots = []; const existingIndex = db.availableSlots.findIndex(s => s.date === date); if(existingIndex >= 0) { db.availableSlots[existingIndex].times = times; } else { db.availableSlots.push({ date, times }); } saveDb(db); revalidatePath("/reserva"); revalidatePath("/admin/dashboard"); return true; }
+
+export async function deleteService(id) {
+  const db = await getDb();
+  db.services = db.services.filter(s => s.id !== id);
+  await saveDb(db);
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/reserva");
+  return true;
+}
+
+export async function getGallery() {
+  const db = await getDb();
+  return db.gallery || [];
+}
+
+export async function addGalleryWork(data) {
+  const db = await getDb();
+  if (!db.gallery) db.gallery = [];
+  const newItem = {
+    id: Date.now(),
+    ...data,
+    createdAt: new Date().toISOString()
+  };
+  db.gallery.push(newItem);
+  await saveDb(db);
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/");
+  return newItem;
+}
+
+export async function getAvailableSlots() {
+  const db = await getDb();
+  return db.availableSlots || [];
+}
+
+export async function saveAvailableSlots(date, times) {
+  const db = await getDb();
+  if(!db.availableSlots) db.availableSlots = [];
+  const existingIndex = db.availableSlots.findIndex(s => s.date === date);
+  if(existingIndex >= 0) {
+    db.availableSlots[existingIndex].times = times;
+  } else {
+    db.availableSlots.push({ date, times });
+  }
+  await saveDb(db);
+  revalidatePath("/reserva");
+  revalidatePath("/admin/dashboard");
+  return true;
+}
