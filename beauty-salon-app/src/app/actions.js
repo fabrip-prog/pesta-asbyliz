@@ -54,3 +54,4 @@ export async function createAppointment(data) {
   revalidatePath("/admin/dashboard");
   return newAppointment;
 }
+export async function deleteService(id) { const db = getDb(); db.services = db.services.filter(s => s.id !== id); saveDb(db); revalidatePath("/admin/dashboard"); revalidatePath("/reserva"); return true; } export async function getGallery() { const db = getDb(); return db.gallery || []; } export async function addGalleryWork(data) { const db = getDb(); if (!db.gallery) db.gallery = []; const newItem = { id: Date.now(), ...data, createdAt: new Date().toISOString() }; db.gallery.push(newItem); saveDb(db); revalidatePath("/admin/dashboard"); revalidatePath("/"); return newItem; }

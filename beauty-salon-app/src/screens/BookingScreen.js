@@ -280,7 +280,7 @@ export function BookingScreen() {
               
               {/* Botón de Mercado Pago simulado */}
               <a 
-                href="https://link.mercadopago.com.ar/test" 
+                href="link.mercadopago.com.ar/pestanasbyliz" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="block w-full text-center bg-[#009EE3] text-white py-3 rounded-xl font-medium hover:bg-[#0088CC] transition-colors mb-3"

@@ -11,6 +11,7 @@ const defaultData = {
     { id: 4, name: "Limpieza Facial Profunda", category: "cosmetologia", price: 12000, deposit: 4000, duration: "60 min" }
   ],
   appointments: [],
+  gallery: [],
   availability: {
     startHour: "09:00",
     endHour: "20:00",

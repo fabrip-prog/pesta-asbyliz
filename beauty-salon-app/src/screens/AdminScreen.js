@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X } from "lucide-react";
+import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createAppointment, getAppointments, getServices, createService } from "@/app/actions";
+import { createAppointment, getAppointments, getServices, createService, deleteService, addGalleryWork, getGallery } from "@/app/actions";
 
 export function AdminScreen() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -12,15 +12,18 @@ export function AdminScreen() {
   
   const [appointments, setAppointments] = useState([]);
   const [services, setServices] = useState([]);
+  const [gallery, setGallery] = useState([]);
   
   const [formData, setFormData] = useState({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
   const [serviceData, setServiceData] = useState({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
+  const [galleryData, setGalleryData] = useState({ title: "", description: "", image: "" });
   
   const router = useRouter();
 
   useEffect(() => {
     getAppointments().then(data => setAppointments(data));
     getServices().then(data => setServices(data));
+    getGallery().then(data => setGallery(data));
   }, []);
 
   const handleLogout = () => {
@@ -44,82 +47,79 @@ export function AdminScreen() {
     setServiceData({ name: "", category: "pestanas", price: "", deposit: "", duration: "60 min" });
   };
 
+  const handleDeleteService = async (id) => {
+    if(confirm("¿Seguro que deseas eliminar este servicio?")) {
+      await deleteService(id);
+      setServices(services.filter(s => s.id !== id));
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setGalleryData({...galleryData, image: reader.result});
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCreateGalleryItem = async (e) => {
+    e.preventDefault();
+    if (!galleryData.image) return alert("Sube una foto primero");
+    const newItem = await addGalleryWork(galleryData);
+    setGallery([...gallery, newItem]);
+    setGalleryData({ title: "", description: "", image: "" });
+  };
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
   };
 
   return (
-    <div className="min-h-screen bg-secondary/10 flex relative">
+    <div className="min-h-screen bg-secondary/10 flex relative font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-primary/20 flex flex-col">
+      <aside className="w-64 bg-white border-r border-primary/20 flex flex-col hidden md:flex">
         <div className="p-6 border-b border-primary/10">
           <h2 className="text-xl font-bold text-foreground">Panel Admin</h2>
           <p className="text-sm text-foreground/60">Pestañas By Liz</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === "calendar" 
-                ? "bg-primary text-primary-foreground font-medium" 
-                : "text-foreground/70 hover:bg-secondary/50"
-            }`}
-          >
-            <Calendar className="h-5 w-5" />
-            Agenda y Turnos
+          <button onClick={() => setActiveTab("calendar")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "calendar" ? "bg-primary text-primary-foreground font-medium" : "text-foreground/70 hover:bg-secondary/50"}`}>
+            <Calendar className="h-5 w-5" /> Agenda y Turnos
           </button>
-          
-          <button
-            onClick={() => setActiveTab("gallery")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === "gallery" 
-                ? "bg-primary text-primary-foreground font-medium" 
-                : "text-foreground/70 hover:bg-secondary/50"
-            }`}
-          >
-            <ImageIcon className="h-5 w-5" />
-            Galería
+          <button onClick={() => setActiveTab("gallery")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "gallery" ? "bg-primary text-primary-foreground font-medium" : "text-foreground/70 hover:bg-secondary/50"}`}>
+            <ImageIcon className="h-5 w-5" /> Galería de Trabajos
           </button>
-          
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === "settings" 
-                ? "bg-primary text-primary-foreground font-medium" 
-                : "text-foreground/70 hover:bg-secondary/50"
-            }`}
-          >
-            <Settings className="h-5 w-5" />
-            Servicios y Precios
+          <button onClick={() => setActiveTab("settings")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === "settings" ? "bg-primary text-primary-foreground font-medium" : "text-foreground/70 hover:bg-secondary/50"}`}>
+            <Settings className="h-5 w-5" /> Servicios y Precios
           </button>
         </nav>
 
         <div className="p-4 border-t border-primary/10">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="h-5 w-5" />
-            Cerrar Sesión
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors">
+            <LogOut className="h-5 w-5" /> Cerrar Sesión
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        {/* Mobile Tab Selector */}
+        <div className="md:hidden flex gap-2 mb-6 overflow-x-auto pb-2">
+          <button onClick={() => setActiveTab("calendar")} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium ${activeTab === "calendar" ? "bg-primary text-white" : "bg-white text-foreground/70"}`}>Agenda</button>
+          <button onClick={() => setActiveTab("gallery")} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium ${activeTab === "gallery" ? "bg-primary text-white" : "bg-white text-foreground/70"}`}>Galería</button>
+          <button onClick={() => setActiveTab("settings")} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium ${activeTab === "settings" ? "bg-primary text-white" : "bg-white text-foreground/70"}`}>Servicios</button>
+        </div>
+
         {activeTab === "calendar" && (
           <div className="animate-in fade-in duration-300">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-foreground">Agenda de Turnos</h1>
-              <button 
-                onClick={() => setShowModal(true)}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" /> Nuevo Turno Manual
+              <button onClick={() => setShowModal(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Nuevo Manual
               </button>
             </div>
-            
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 min-h-[500px]">
               <h3 className="font-medium text-foreground mb-4">Turnos Registrados ({appointments.length})</h3>
               {appointments.length > 0 ? (
@@ -147,11 +147,53 @@ export function AdminScreen() {
         {activeTab === "gallery" && (
           <div className="animate-in fade-in duration-300">
             <h1 className="text-2xl font-bold text-foreground mb-6">Gestión de Galería</h1>
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10">
-              <div className="border-2 border-dashed border-primary/30 rounded-xl p-12 text-center">
-                <ImageIcon className="h-12 w-12 text-primary/50 mx-auto mb-4" />
-                <p className="text-foreground font-medium">Arrastra fotos aquí o haz clic para subir</p>
-                <p className="text-sm text-foreground/60 mt-2">Formatos soportados: JPG, PNG, WEBP</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 h-fit">
+                <h3 className="font-medium mb-4">Subir Nuevo Trabajo</h3>
+                <form onSubmit={handleCreateGalleryItem} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Nombre (ej. Cliente o Servicio)</label>
+                    <input required type="text" value={galleryData.title} onChange={e => setGalleryData({...galleryData, title: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="Ej: Volumen Ruso - María"/>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Descripción Breve</label>
+                    <textarea value={galleryData.description} onChange={e => setGalleryData({...galleryData, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" rows="2" placeholder="Fibras 0.05, curvatura D..."></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Foto del Trabajo</label>
+                    <div className="border-2 border-dashed border-primary/30 rounded-xl p-4 text-center cursor-pointer relative hover:bg-secondary/10 transition-colors">
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      {galleryData.image ? (
+                        <img src={galleryData.image} alt="Preview" className="h-32 object-contain mx-auto rounded-lg" />
+                      ) : (
+                        <div>
+                          <ImageIcon className="h-8 w-8 text-primary/50 mx-auto mb-2" />
+                          <p className="text-sm text-foreground font-medium">Toca para seleccionar foto de tu celular</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Trabajo</button>
+                </form>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10">
+                <h3 className="font-medium mb-4">Trabajos Subidos</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {gallery.length > 0 ? gallery.slice().reverse().map((item) => (
+                    <div key={item.id} className="rounded-xl overflow-hidden border border-primary/20 relative group">
+                      <img src={item.image} alt={item.title} className="w-full h-32 object-cover" />
+                      <div className="absolute inset-0 bg-black/60 flex items-end p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div>
+                          <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                          <p className="text-white/80 text-xs truncate">{item.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                     <p className="text-foreground/60 text-sm text-center col-span-2 py-8">La galería está vacía.</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -161,35 +203,36 @@ export function AdminScreen() {
           <div className="animate-in fade-in duration-300">
             <h1 className="text-2xl font-bold text-foreground mb-6">Servicios, Precios y Señas</h1>
             <div className="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-secondary/30 text-foreground text-sm border-b border-primary/10">
-                    <th className="p-4 font-medium">Servicio</th>
-                    <th className="p-4 font-medium">Categoría</th>
-                    <th className="p-4 font-medium">Precio Total</th>
-                    <th className="p-4 font-medium">Seña Requerida</th>
-                    <th className="p-4 font-medium">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((svc) => (
-                    <tr key={svc.id} className="border-b border-primary/5">
-                      <td className="p-4 text-sm">{svc.name}</td>
-                      <td className="p-4 text-sm capitalize">{svc.category}</td>
-                      <td className="p-4 text-sm font-medium">{formatPrice(svc.price)}</td>
-                      <td className="p-4 text-sm text-primary font-medium">{formatPrice(svc.deposit)}</td>
-                      <td className="p-4">
-                        <button className="text-blue-500 hover:text-blue-700 p-1"><Edit className="h-4 w-4" /></button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="bg-secondary/30 text-foreground text-sm border-b border-primary/10">
+                      <th className="p-4 font-medium">Servicio</th>
+                      <th className="p-4 font-medium">Categoría</th>
+                      <th className="p-4 font-medium">Precio Total</th>
+                      <th className="p-4 font-medium">Seña Requerida</th>
+                      <th className="p-4 font-medium text-center">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {services.map((svc) => (
+                      <tr key={svc.id} className="border-b border-primary/5">
+                        <td className="p-4 text-sm font-medium">{svc.name}</td>
+                        <td className="p-4 text-sm capitalize">{svc.category}</td>
+                        <td className="p-4 text-sm">{formatPrice(svc.price)}</td>
+                        <td className="p-4 text-sm text-primary">{formatPrice(svc.deposit)}</td>
+                        <td className="p-4 text-center">
+                          <button onClick={() => handleDeleteService(svc.id)} className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors" title="Eliminar servicio">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <div className="p-4 bg-secondary/10">
-                <button 
-                  onClick={() => setShowServiceModal(true)}
-                  className="text-sm font-medium text-primary flex items-center gap-1 hover:text-accent"
-                >
+                <button onClick={() => setShowServiceModal(true)} className="text-sm font-medium text-primary flex items-center gap-1 hover:text-accent">
                   <Plus className="h-4 w-4" /> Agregar nuevo servicio
                 </button>
               </div>
@@ -198,7 +241,7 @@ export function AdminScreen() {
         )}
       </main>
 
-      {/* Modal Turno Manual */}
+      {/* Modals ... */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
@@ -231,7 +274,6 @@ export function AdminScreen() {
         </div>
       )}
 
-      {/* Modal Agregar Servicio */}
       {showServiceModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
