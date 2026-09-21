@@ -1,20 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, Settings, Image as ImageIcon, LogOut, Plus, Edit, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createAppointment, getAppointments } from "@/app/actions";
 
 export function AdminScreen() {
   const [activeTab, setActiveTab] = useState("calendar");
+  const [showModal, setShowModal] = useState(false);
+  const [appointments, setAppointments] = useState([]);
+  const [formData, setFormData] = useState({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
+  
   const router = useRouter();
+
+  useEffect(() => {
+    getAppointments().then(data => setAppointments(data));
+  }, []);
 
   const handleLogout = () => {
     document.cookie = "admin_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     router.push("/admin");
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    const newAppt = await createAppointment(formData);
+    setAppointments([...appointments, newAppt]);
+    setShowModal(false);
+    setFormData({ clientName: "", clientPhone: "", date: "", startTime: "", service: { name: "Manual" } });
+  };
+
   return (
-    <div className="min-h-screen bg-secondary/10 flex">
+    <div className="min-h-screen bg-secondary/10 flex relative">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-primary/20 flex flex-col">
         <div className="p-6 border-b border-primary/10">
@@ -72,20 +89,39 @@ export function AdminScreen() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-y-auto">
         {activeTab === "calendar" && (
           <div className="animate-in fade-in duration-300">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-foreground">Agenda de Turnos</h1>
-              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2">
+              <button 
+                onClick={() => setShowModal(true)}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent flex items-center gap-2"
+              >
                 <Plus className="h-4 w-4" /> Nuevo Turno Manual
               </button>
             </div>
             
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary/10 min-h-[500px]">
-              <p className="text-foreground/60 text-center mt-20">
-                El calendario interactivo se mostrará aquí (conectado a la base de datos).
-              </p>
+              <h3 className="font-medium text-foreground mb-4">Turnos Registrados ({appointments.length})</h3>
+              {appointments.length > 0 ? (
+                <div className="space-y-3">
+                  {appointments.slice().reverse().map((appt, i) => (
+                    <div key={i} className="flex justify-between items-center p-4 border border-primary/20 rounded-xl bg-secondary/5">
+                      <div>
+                        <p className="font-semibold">{appt.clientName}</p>
+                        <p className="text-sm text-foreground/60">{appt.service?.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-primary bg-primary/10 px-3 py-1 rounded-full text-sm inline-block">{appt.date} a las {appt.startTime}</p>
+                        <p className="text-xs text-foreground/50 mt-1">{appt.clientPhone}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-foreground/60 text-center mt-20">No hay turnos registrados aún.</p>
+              )}
             </div>
           </div>
         )}
@@ -147,6 +183,39 @@ export function AdminScreen() {
           </div>
         )}
       </main>
+
+      {/* Modal Turno Manual */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Agregar Turno Manual</h3>
+              <button onClick={() => setShowModal(false)} className="text-foreground/50 hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nombre</label>
+                <input required type="text" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Servicio</label>
+                <input required type="text" value={formData.service.name} onChange={e => setFormData({...formData, service: { name: e.target.value }})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fecha (YYYY-MM-DD)</label>
+                  <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Hora (HH:MM)</label>
+                  <input required type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Turno</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

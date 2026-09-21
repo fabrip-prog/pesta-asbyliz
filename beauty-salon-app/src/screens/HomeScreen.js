@@ -1,7 +1,10 @@
 import { CalendarDays, Star, Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-export function HomeScreen() {
+export function HomeScreen({ appointments = [] }) {
+  // Solo mostramos los últimos 3 turnos para mantener privacidad (solo nombre y servicio)
+  const recentAppointments = appointments.slice(-3).reverse();
+
   return (
     <div className="flex flex-col min-h-screen font-sans">
       {/* HEADER / NAVIGATION */}
@@ -14,6 +17,7 @@ export function HomeScreen() {
           <nav className="hidden md:flex gap-6">
             <Link href="#servicios" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Servicios</Link>
             <Link href="#galeria" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Galería</Link>
+            <Link href="#turnos" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Próximos Turnos</Link>
             <Link href="#contacto" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Contacto</Link>
           </nav>
           <Link 
@@ -76,6 +80,37 @@ export function HomeScreen() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* RECENT APPOINTMENTS SECTION */}
+        <section id="turnos" className="py-16 bg-secondary/10 border-y border-primary/10">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-4">Próximos Turnos Agendados</h2>
+              <p className="text-foreground/70 max-w-2xl mx-auto">
+                Mira las clientas que ya tienen su lugar reservado. ¡No te quedes sin el tuyo!
+              </p>
+            </div>
+            
+            {recentAppointments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {recentAppointments.map((appt, i) => (
+                  <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-primary/20 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
+                      <CalendarDays className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="font-semibold text-foreground mb-1">{appt.clientName.split(" ")[0]} ya agendó</p>
+                    <p className="text-sm text-foreground/60">{appt.service?.name || "Servicio de Estética"}</p>
+                    <p className="text-xs text-primary font-medium mt-3 bg-secondary px-3 py-1 rounded-full">
+                      {appt.date} - {appt.startTime}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-foreground/60">Aún no hay turnos próximos para mostrar. ¡Sé la primera!</p>
+            )}
           </div>
         </section>
 
