@@ -22,15 +22,18 @@ const defaultData = {
 };
 
 export async function getDb() {
-  // Always clone defaultData to avoid mutating the global object across requests
   const cloneDefault = () => JSON.parse(JSON.stringify(defaultData));
   
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
-      const dbBlob = blobs.find(b => b.pathname === 'data.json');
-      if (dbBlob) {
-        const response = await fetch(dbBlob.url, { cache: 'no-store' });
+      // Find the most recent db-data file (in case of multiples, though we try to keep only 1)
+      const dbBlobs = blobs.filter(b => b.pathname.startsWith('db-data'));
+      if (dbBlobs.length > 0) {
+        // Sort by uploadedAt descending to get the newest
+        dbBlobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+        const latestBlob = dbBlobs[0];
+        const response = await fetch(latestBlob.url, { cache: 'no-store' });
         return await response.json();
       }
       return cloneDefault();
@@ -39,13 +42,10 @@ export async function getDb() {
       return cloneDefault();
     }
   } else {
-    // Si estamos en Vercel pero olvidaron el token, no intentemos usar 'fs' porque romperá la app (500 Error)
     if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
       console.warn("Falta BLOB_READ_WRITE_TOKEN en Vercel. Devolviendo datos por defecto.");
       return cloneDefault();
     }
-    
-    // Fallback para desarrollo local (localhost)
     const dataFile = path.join(process.cwd(), 'data.json');
     if (!fs.existsSync(dataFile)) {
       fs.writeFileSync(dataFile, JSON.stringify(defaultData, null, 2));
@@ -58,21 +58,30 @@ export async function getDb() {
 export async function saveDb(data) {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      await put('data.json', JSON.stringify(data), {
+      const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
+      const oldBlobs = blobs.filter(b => b.pathname.startsWith('db-data'));
+      
+      // Save new file first with a random suffix (addRandomSuffix: true by default)
+      // This guarantees a completely new URL, bypassing any CDN cache!
+      await put('db-data.json', JSON.stringify(data), {
         access: 'public',
-        addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
+      
+      // Delete old files to clean up storage
+      if (oldBlobs.length > 0) {
+        // Need to import del dynamically since it's not imported at the top
+        const { del } = await import('@vercel/blob');
+        await del(oldBlobs.map(b => b.url), { token: process.env.BLOB_READ_WRITE_TOKEN });
+      }
     } catch (e) {
       console.error("Vercel Blob PUT error:", e);
     }
   } else {
-    // Si estamos en Vercel sin token, ignoramos el guardado para evitar crashear con fs.writeFileSync
     if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
       console.warn("Intento de guardar sin BLOB_READ_WRITE_TOKEN en producción. Ignorado para evitar crash.");
       return;
     }
-    
     const dataFile = path.join(process.cwd(), 'data.json');
     fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
   }
