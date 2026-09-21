@@ -29,6 +29,19 @@ export default async function DebugPage() {
            output.data = await response.json();
         }
       }
+      
+      // Attempt a test write
+      try {
+        const { put } = await import('@vercel/blob');
+        const testPut = await put('test-debug.txt', 'hello', { access: 'public', token: process.env.BLOB_READ_WRITE_TOKEN });
+        output.testWrite = "Success";
+        output.testWriteUrl = testPut.url;
+      } catch (writeErr) {
+        output.testWrite = "Failed";
+        output.testWriteError = writeErr.message;
+        output.testWriteStack = writeErr.stack;
+      }
+      
     } catch (e) {
       output = { status: "Error reading blobs", error: e.message };
     }
