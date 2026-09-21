@@ -22,6 +22,9 @@ const defaultData = {
 };
 
 export async function getDb() {
+  // Always clone defaultData to avoid mutating the global object across requests
+  const cloneDefault = () => JSON.parse(JSON.stringify(defaultData));
+  
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
@@ -30,17 +33,23 @@ export async function getDb() {
         const response = await fetch(dbBlob.url, { cache: 'no-store' });
         return await response.json();
       }
-      return defaultData;
+      return cloneDefault();
     } catch (e) {
       console.error("Vercel Blob GET error:", e);
-      return defaultData;
+      return cloneDefault();
     }
   } else {
-    // Fallback para localhost si no hay token (opcional, pero ayuda al desarrollo)
+    // Si estamos en Vercel pero olvidaron el token, no intentemos usar 'fs' porque romperá la app (500 Error)
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      console.warn("Falta BLOB_READ_WRITE_TOKEN en Vercel. Devolviendo datos por defecto.");
+      return cloneDefault();
+    }
+    
+    // Fallback para desarrollo local (localhost)
     const dataFile = path.join(process.cwd(), 'data.json');
     if (!fs.existsSync(dataFile)) {
       fs.writeFileSync(dataFile, JSON.stringify(defaultData, null, 2));
-      return defaultData;
+      return cloneDefault();
     }
     return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
   }
@@ -51,13 +60,19 @@ export async function saveDb(data) {
     try {
       await put('data.json', JSON.stringify(data), {
         access: 'public',
-        addRandomSuffix: false, // Ensures we overwrite the exact file 'data.json'
+        addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
     } catch (e) {
       console.error("Vercel Blob PUT error:", e);
     }
   } else {
+    // Si estamos en Vercel sin token, ignoramos el guardado para evitar crashear con fs.writeFileSync
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      console.warn("Intento de guardar sin BLOB_READ_WRITE_TOKEN en producción. Ignorado para evitar crash.");
+      return;
+    }
+    
     const dataFile = path.join(process.cwd(), 'data.json');
     fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
   }
