@@ -67,7 +67,7 @@ export function HomeScreen({ appointments = [] }) {
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground">Ubicación</h3>
-                  <p className="text-sm text-foreground/70">Av. Principal 123, Centro</p>
+                  <p className="text-sm text-foreground/70">San Luis y Manuel Belgrano, Gdor. Castro</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 rounded-2xl bg-white/60 p-4 shadow-sm border border-primary/10">
@@ -76,7 +76,7 @@ export function HomeScreen({ appointments = [] }) {
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground">Horario</h3>
-                  <p className="text-sm text-foreground/70">Lun a Sáb: 9:00 - 20:00</p>
+                  <p className="text-sm text-foreground/70">Lun a Sáb</p>
                 </div>
               </div>
             </div>
