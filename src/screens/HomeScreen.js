@@ -3,18 +3,20 @@
 import { useState, useEffect } from "react";
 import { CalendarDays, Star, Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { getAppointments } from "@/app/actions";
+import { getAvailableSlots } from "@/app/actions";
 
-export function HomeScreen({ appointments: initialAppointments = [] }) {
-  const [appointments, setAppointments] = useState(initialAppointments);
+export function HomeScreen() {
+  const [availableSlots, setAvailableSlots] = useState([]);
 
   useEffect(() => {
-    // Cargar datos frescos desde el servidor al montar
-    getAppointments().then(data => setAppointments(data || []));
+    getAvailableSlots().then(data => setAvailableSlots(data || []));
   }, []);
 
-  // Solo mostramos los últimos 3 turnos para mantener privacidad (solo nombre y servicio)
-  const recentAppointments = appointments.slice(-3).reverse();
+  // Ordenar por fecha y mostrar solo fechas futuras
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingSlots = availableSlots
+    .filter(s => s.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="flex flex-col min-h-screen font-sans">
@@ -28,7 +30,7 @@ export function HomeScreen({ appointments: initialAppointments = [] }) {
           <nav className="hidden md:flex gap-6">
             <Link href="#servicios" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Servicios</Link>
             <Link href="#galeria" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Galería</Link>
-            <Link href="#turnos" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Próximos Turnos</Link>
+            <Link href="#turnos" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Disponibilidad</Link>
             <Link href="#contacto" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Contacto</Link>
           </nav>
           <Link 
@@ -94,34 +96,60 @@ export function HomeScreen({ appointments: initialAppointments = [] }) {
           </div>
         </section>
 
-        {/* RECENT APPOINTMENTS SECTION */}
+        {/* DISPONIBILIDAD DE TURNOS */}
         <section id="turnos" className="py-16 bg-secondary/10 border-y border-primary/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-10">
-              <h2 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-4">Próximos Turnos Agendados</h2>
+              <h2 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-4">Turnos Disponibles</h2>
               <p className="text-foreground/70 max-w-2xl mx-auto">
-                Mira las clientas que ya tienen su lugar reservado. ¡No te quedes sin el tuyo!
+                Consultá los días y horarios disponibles para agendar tu turno. ¡Reservá el tuyo antes de que se agoten!
               </p>
             </div>
             
-            {recentAppointments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                {recentAppointments.map((appt, i) => (
-                  <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-primary/20 flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
-                      <CalendarDays className="h-6 w-6 text-primary" />
+            {upcomingSlots.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                {upcomingSlots.map((slot) => {
+                  const dateObj = new Date(slot.date + 'T12:00:00');
+                  const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+                  const dayNum = dateObj.getDate();
+                  const monthName = dateObj.toLocaleDateString('es-ES', { month: 'short' });
+
+                  return (
+                    <div key={slot.date} className="bg-white rounded-2xl shadow-sm border border-primary/20 overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="bg-primary/10 px-4 py-3 text-center border-b border-primary/10">
+                        <p className="text-xs uppercase tracking-wider text-primary/70 font-medium">{dayName}</p>
+                        <p className="text-2xl font-bold text-primary">{dayNum}</p>
+                        <p className="text-xs text-foreground/60 capitalize">{monthName}</p>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {slot.times.map(time => (
+                            <span key={time} className="text-sm bg-secondary/50 text-foreground/80 px-3 py-1 rounded-full border border-primary/10">
+                              {time}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-foreground/50 text-center mt-3">
+                          {slot.times.length} {slot.times.length === 1 ? 'horario disponible' : 'horarios disponibles'}
+                        </p>
+                      </div>
                     </div>
-                    <p className="font-semibold text-foreground mb-1">{appt.clientName.split(" ")[0]} ya agendó</p>
-                    <p className="text-sm text-foreground/60">{appt.service?.name || "Servicio de Estética"}</p>
-                    <p className="text-xs text-primary font-medium mt-3 bg-secondary px-3 py-1 rounded-full">
-                      {appt.date} - {appt.startTime}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-center text-foreground/60">Aún no hay turnos próximos para mostrar. ¡Sé la primera!</p>
+              <p className="text-center text-foreground/60">No hay turnos disponibles en este momento. ¡Volvé a consultar pronto!</p>
             )}
+
+            <div className="text-center mt-8">
+              <Link 
+                href="/reserva" 
+                className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3 text-base font-medium text-primary-foreground shadow-sm transition-transform hover:scale-105"
+              >
+                <CalendarDays className="mr-2 h-5 w-5" />
+                Reservar mi turno
+              </Link>
+            </div>
           </div>
         </section>
 
