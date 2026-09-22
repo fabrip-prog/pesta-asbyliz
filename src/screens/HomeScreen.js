@@ -1,7 +1,18 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { CalendarDays, Star, Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { getAppointments } from "@/app/actions";
 
-export function HomeScreen({ appointments = [] }) {
+export function HomeScreen({ appointments: initialAppointments = [] }) {
+  const [appointments, setAppointments] = useState(initialAppointments);
+
+  useEffect(() => {
+    // Cargar datos frescos desde el servidor al montar
+    getAppointments().then(data => setAppointments(data || []));
+  }, []);
+
   // Solo mostramos los últimos 3 turnos para mantener privacidad (solo nombre y servicio)
   const recentAppointments = appointments.slice(-3).reverse();
 

@@ -158,7 +158,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
                         : "border-primary/20 text-foreground/70 hover:bg-secondary/50"
                     }`}
                   >
-                    {new Date(date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    {new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
                   </button>
                 ))}
               </div>
@@ -202,7 +202,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
         {step === 3 && (
           <div className="animate-in slide-in-from-right-4 duration-300">
             <h2 className="text-2xl font-bold text-foreground mb-2">Tus Datos</h2>
-            <p className="text-foreground/60 mb-6">Para agendar tu turno para el {new Date(bookingData.date).toLocaleDateString()} a las {bookingData.time}.</p>
+            <p className="text-foreground/60 mb-6">Para agendar tu turno para el {new Date(bookingData.date + 'T12:00:00').toLocaleDateString()} a las {bookingData.time}.</p>
             
             <div className="bg-white p-6 rounded-2xl border border-primary/20 mb-6 shadow-sm">
               <div className="space-y-4">
@@ -258,7 +258,7 @@ export function BookingScreen({ services = [], availableSlots = [] }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground/60">Fecha:</span>
-                  <span className="font-medium">{bookingData.date ? new Date(bookingData.date).toLocaleDateString() : ''}</span>
+                  <span className="font-medium">{bookingData.date ? new Date(bookingData.date + 'T12:00:00').toLocaleDateString() : ''}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground/60">Hora:</span>
