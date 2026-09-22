@@ -11,44 +11,33 @@ export default async function DebugPage() {
         blobs: blobs.map(b => ({ pathname: b.pathname, url: b.url, size: b.size, uploadedAt: b.uploadedAt }))
       };
       
-      // Fetch the latest db-data
-      const dbBlobs = blobs.filter(b => b.pathname.startsWith('db-data'));
-      if (dbBlobs.length > 0) {
-        dbBlobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-        const latestBlob = dbBlobs[0];
-        output.latestBlob = latestBlob;
+      // Buscar el blob 'database.json' (el que usa db.js)
+      const dbBlob = blobs.find(b => b.pathname === 'database.json');
+      if (dbBlob) {
+        output.dbBlob = dbBlob;
         
-        const response = await fetch(latestBlob.downloadUrl || latestBlob.url, { 
+        const response = await fetch(dbBlob.downloadUrl || dbBlob.url, { 
           cache: 'no-store',
           headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
         });
         output.data = await response.json();
       } else {
-        // Fallback to data.json
-        const oldBlob = blobs.find(b => b.pathname === 'data.json');
-        if (oldBlob) {
-           output.oldBlob = oldBlob;
-           const response = await fetch(oldBlob.downloadUrl || oldBlob.url, { 
-             cache: 'no-store',
-             headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
-           });
-           output.data = await response.json();
-        }
+        output.data = "No se encontró 'database.json' en Blob Storage. Se usarán datos por defecto hasta que se guarde algo.";
       }
       
-      // Attempt a test write
+      // Intento de escritura de prueba
       try {
         const { put } = await import('@vercel/blob');
-        let putOptions = { access: 'public', token: process.env.BLOB_READ_WRITE_TOKEN };
+        let putOptions = { access: 'private', addRandomSuffix: false, token: process.env.BLOB_READ_WRITE_TOKEN };
         try {
           const testPut = await put('test-debug.txt', 'hello', putOptions);
-          output.testWrite = "Success (Public)";
+          output.testWrite = "Success (Private)";
           output.testWriteUrl = testPut.url;
         } catch (err) {
-          if (err.message && err.message.includes('private store')) {
-            putOptions.access = 'private';
+          if (err.message && err.message.includes('public')) {
+            putOptions.access = 'public';
             const testPut = await put('test-debug.txt', 'hello', putOptions);
-            output.testWrite = "Success (Private)";
+            output.testWrite = "Success (Public)";
             output.testWriteUrl = testPut.url;
           } else {
             throw err;
@@ -64,7 +53,7 @@ export default async function DebugPage() {
       output = { status: "Error reading blobs", error: e.message };
     }
   } else {
-    output = { status: "No BLOB_READ_WRITE_TOKEN in environment" };
+    output = { status: "No BLOB_READ_WRITE_TOKEN in environment — la persistencia NO funciona sin este token." };
   }
 
   return (

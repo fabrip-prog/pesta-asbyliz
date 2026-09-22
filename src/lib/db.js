@@ -1,6 +1,5 @@
-import { put, list } from '@vercel/blob';
-import fs from 'fs';
-import path from 'path';
+// Imports are done dynamically inside functions to support both
+// Vercel Blob (production) and local filesystem (development)
 
 const defaultData = {
   services: [
@@ -33,12 +32,9 @@ export async function getDb() {
       
       if (dbBlob) {
         const fetchUrl = dbBlob.downloadUrl || dbBlob.url;
-        // Al ser un blob privado, pasamos el token y evitamos caché
+        // Blob público: no necesita Authorization, solo evitar caché
         const response = await fetch(fetchUrl, { 
-          cache: 'no-store',
-          headers: {
-            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
-          }
+          cache: 'no-store'
         });
         
         if (!response.ok) {
@@ -74,9 +70,8 @@ export async function saveDb(data) {
     try {
       const { put } = await import('@vercel/blob');
       // Sobrescribimos siempre el mismo archivo para evitar desincronización
-      // Como es privado, no sufre el caché abusivo del CDN de Vercel.
       await put('database.json', JSON.stringify(data), {
-        access: 'private',
+        access: 'public',
         addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
