@@ -73,6 +73,7 @@ export async function saveDb(data) {
       await put('database.json', JSON.stringify(data), {
         access: 'public',
         addRandomSuffix: false,
+        allowOverwrite: true,
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
     } catch (e) {

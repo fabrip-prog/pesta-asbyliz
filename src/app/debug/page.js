@@ -25,24 +25,16 @@ export default async function DebugPage() {
         output.data = "No se encontró 'database.json' en Blob Storage. Se usarán datos por defecto hasta que se guarde algo.";
       }
       
-      // Intento de escritura de prueba
       try {
         const { put } = await import('@vercel/blob');
-        let putOptions = { access: 'private', addRandomSuffix: false, token: process.env.BLOB_READ_WRITE_TOKEN };
-        try {
-          const testPut = await put('test-debug.txt', 'hello', putOptions);
-          output.testWrite = "Success (Private)";
-          output.testWriteUrl = testPut.url;
-        } catch (err) {
-          if (err.message && err.message.includes('public')) {
-            putOptions.access = 'public';
-            const testPut = await put('test-debug.txt', 'hello', putOptions);
-            output.testWrite = "Success (Public)";
-            output.testWriteUrl = testPut.url;
-          } else {
-            throw err;
-          }
-        }
+        const testPut = await put('test-debug.txt', 'hello', {
+          access: 'public',
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          token: process.env.BLOB_READ_WRITE_TOKEN
+        });
+        output.testWrite = "Success";
+        output.testWriteUrl = testPut.url;
       } catch (writeErr) {
         output.testWrite = "Failed";
         output.testWriteError = writeErr.message;
