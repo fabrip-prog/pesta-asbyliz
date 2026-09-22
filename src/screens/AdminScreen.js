@@ -64,21 +64,47 @@ export function AdminScreen() {
     }
   };
 
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [uploading, setUploading] = useState(false);
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setGalleryData({...galleryData, image: reader.result});
-      reader.readAsDataURL(file);
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
     }
   };
 
   const handleCreateGalleryItem = async (e) => {
     e.preventDefault();
-    if (!galleryData.image) return alert("Sube una foto primero");
-    const newItem = await addGalleryWork(galleryData);
-    setGallery([...gallery, newItem]);
-    setGalleryData({ title: "", description: "", image: "" });
+    if (!imageFile) return alert("Seleccioná una foto primero");
+    
+    setUploading(true);
+    try {
+      // 1. Subir imagen a Vercel Blob
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      
+      if (!uploadRes.ok) throw new Error(uploadData.error || 'Error al subir imagen');
+      
+      // 2. Guardar en la galería con la URL del blob
+      const newItem = await addGalleryWork({
+        title: galleryData.title,
+        description: galleryData.description,
+        image: uploadData.url
+      });
+      setGallery([...gallery, newItem]);
+      setGalleryData({ title: "", description: "", image: "" });
+      setImageFile(null);
+      setImagePreview("");
+    } catch (err) {
+      alert("Error al subir: " + err.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveAvailability = async (e) => {
@@ -226,17 +252,29 @@ export function AdminScreen() {
                     <label className="block text-sm font-medium mb-1">Foto del Trabajo</label>
                     <div className="border-2 border-dashed border-primary/30 rounded-xl p-4 text-center cursor-pointer relative hover:bg-secondary/10 transition-colors">
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                      {galleryData.image ? (
-                        <img src={galleryData.image} alt="Preview" className="h-32 object-contain mx-auto rounded-lg" />
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="h-40 object-contain mx-auto rounded-lg" />
                       ) : (
-                        <div>
-                          <ImageIcon className="h-8 w-8 text-primary/50 mx-auto mb-2" />
-                          <p className="text-sm text-foreground font-medium">Toca para seleccionar foto de tu celular</p>
+                        <div className="py-4">
+                          <ImageIcon className="h-10 w-10 text-primary/50 mx-auto mb-2" />
+                          <p className="text-sm text-foreground font-medium">Tocá para elegir una foto</p>
+                          <p className="text-xs text-foreground/50 mt-1">Desde tu galería o cámara</p>
                         </div>
                       )}
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4">Guardar Trabajo</button>
+                  <button 
+                    type="submit" 
+                    disabled={uploading || !imageFile}
+                    className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-accent mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        Subiendo foto...
+                      </>
+                    ) : "Guardar Trabajo"}
+                  </button>
                 </form>
               </div>
 

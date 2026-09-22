@@ -3,13 +3,29 @@
 import { useState, useEffect } from "react";
 import { CalendarDays, Star, Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { getAvailableSlots } from "@/app/actions";
+import { getAvailableSlots, getServices, getGallery } from "@/app/actions";
+
+const categoryLabels = {
+  pestanas: "Pestañas",
+  cejas: "Cejas",
+  cosmetologia: "Cosmetología"
+};
+
+const categoryIcons = {
+  pestanas: Sparkles,
+  cejas: Star,
+  cosmetologia: Sparkles
+};
 
 export function HomeScreen() {
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [services, setServices] = useState([]);
+  const [gallery, setGallery] = useState([]);
 
   useEffect(() => {
     getAvailableSlots().then(data => setAvailableSlots(data || []));
+    getServices().then(data => setServices(data || []));
+    getGallery().then(data => setGallery(data || []));
   }, []);
 
   // Ordenar por fecha y mostrar solo fechas futuras
@@ -17,6 +33,13 @@ export function HomeScreen() {
   const upcomingSlots = availableSlots
     .filter(s => s.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Agrupar servicios por categoría
+  const categories = [...new Set(services.map(s => s.category))];
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
+  };
 
   return (
     <div className="flex flex-col min-h-screen font-sans">
@@ -153,59 +176,131 @@ export function HomeScreen() {
           </div>
         </section>
 
-        {/* SERVICES PREVIEW */}
+        {/* SERVICIOS Y GALERÍA */}
         <section id="servicios" className="py-20 bg-background">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">Nuestros Servicios</h2>
               <p className="text-foreground/70 max-w-2xl mx-auto">
-                Ofrecemos tratamientos personalizados para realzar tu belleza y cuidar tu piel con los mejores productos del mercado.
+                Conocé todos nuestros tratamientos y mirá los resultados de nuestro trabajo.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Service 1 */}
-              <div className="group rounded-3xl bg-secondary/30 p-8 transition-colors hover:bg-secondary">
-                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-                  <Sparkles className="h-7 w-7" />
-                </div>
-                <h3 className="text-2xl font-medium text-foreground mb-3">Pestañas</h3>
-                <p className="text-foreground/70 mb-6">
-                  Extensiones clásicas, volumen ruso, lifting y tinte. Diseño personalizado según tu tipo de ojo.
-                </p>
-                <Link href="/reserva?categoria=pestanas" className="inline-flex items-center text-primary font-medium group-hover:text-accent">
-                  Ver más <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </div>
-              
-              {/* Service 2 */}
-              <div className="group rounded-3xl bg-secondary/30 p-8 transition-colors hover:bg-secondary">
-                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-                  <Star className="h-7 w-7" />
-                </div>
-                <h3 className="text-2xl font-medium text-foreground mb-3">Cejas</h3>
-                <p className="text-foreground/70 mb-6">
-                  Perfilado, laminado, henna y microblading. Diseñamos la estructura perfecta para tu rostro.
-                </p>
-                <Link href="/reserva?categoria=cejas" className="inline-flex items-center text-primary font-medium group-hover:text-accent">
-                  Ver más <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </div>
+            {categories.length > 0 ? (
+              <div className="space-y-16">
+                {categories.map(cat => {
+                  const Icon = categoryIcons[cat] || Sparkles;
+                  const catServices = services.filter(s => s.category === cat);
+                  const catGallery = gallery.filter(g => {
+                    // Intentar matchear por título del trabajo con el nombre del servicio
+                    const titleLower = (g.title || '').toLowerCase();
+                    return catServices.some(s => titleLower.includes(s.name.toLowerCase())) || 
+                           titleLower.includes(cat.toLowerCase()) ||
+                           titleLower.includes((categoryLabels[cat] || cat).toLowerCase());
+                  });
 
-              {/* Service 3 */}
-              <div className="group rounded-3xl bg-secondary/30 p-8 transition-colors hover:bg-secondary">
-                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-                  <Sparkles className="h-7 w-7" />
-                </div>
-                <h3 className="text-2xl font-medium text-foreground mb-3">Cosmetología</h3>
-                <p className="text-foreground/70 mb-6">
-                  Limpieza facial profunda, dermaplaning, peeling y tratamientos anti-age adaptados a tu piel.
-                </p>
-                <Link href="/reserva?categoria=cosmetologia" className="inline-flex items-center text-primary font-medium group-hover:text-accent">
-                  Ver más <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                  return (
+                    <div key={cat} className="scroll-mt-20" id={`cat-${cat}`}>
+                      {/* Categoría Header */}
+                      <div className="flex items-center gap-3 mb-8">
+                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
+                          {categoryLabels[cat] || cat}
+                        </h3>
+                      </div>
+
+                      {/* Servicios de esta categoría */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                        {catServices.map(svc => (
+                          <div key={svc.id} className="bg-white rounded-2xl p-5 border border-primary/15 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-3">
+                              <h4 className="font-semibold text-foreground">{svc.name}</h4>
+                              <span className="text-xs bg-secondary px-2 py-1 rounded-full text-foreground/60 whitespace-nowrap ml-2">
+                                {svc.duration}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-xs text-foreground/50">Seña</p>
+                                <p className="text-sm font-medium text-primary">{formatPrice(svc.deposit)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-foreground/50">Precio total</p>
+                                <p className="text-lg font-bold text-foreground">{formatPrice(svc.price)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Galería de trabajos de esta categoría */}
+                      {catGallery.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-foreground/60 mb-3 flex items-center gap-2">
+                            📸 Trabajos realizados
+                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {catGallery.map(item => (
+                              <div key={item.id} className="rounded-xl overflow-hidden border border-primary/15 group relative aspect-square">
+                                <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div>
+                                    <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                                    {item.description && <p className="text-white/70 text-xs truncate">{item.description}</p>}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            ) : (
+              <p className="text-center text-foreground/60">Cargando servicios...</p>
+            )}
+
+            {/* Galería general (trabajos sin categoría asignada) */}
+            {gallery.length > 0 && (() => {
+              const categorizedIds = new Set();
+              categories.forEach(cat => {
+                const catServices = services.filter(s => s.category === cat);
+                gallery.forEach(g => {
+                  const titleLower = (g.title || '').toLowerCase();
+                  if (catServices.some(s => titleLower.includes(s.name.toLowerCase())) || 
+                      titleLower.includes(cat.toLowerCase()) ||
+                      titleLower.includes((categoryLabels[cat] || cat).toLowerCase())) {
+                    categorizedIds.add(g.id);
+                  }
+                });
+              });
+              const uncategorized = gallery.filter(g => !categorizedIds.has(g.id));
+              
+              if (uncategorized.length === 0) return null;
+
+              return (
+                <div className="mt-16" id="galeria">
+                  <h3 className="text-2xl font-serif font-bold text-foreground mb-6 text-center">Más Trabajos</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-5xl mx-auto">
+                    {uncategorized.map(item => (
+                      <div key={item.id} className="rounded-xl overflow-hidden border border-primary/15 group relative aspect-square">
+                        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div>
+                            <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                            {item.description && <p className="text-white/70 text-xs truncate">{item.description}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </section>
       </main>
