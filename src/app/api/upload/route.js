@@ -1,7 +1,11 @@
-import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { supabase, isSupabaseReady } from '@/lib/supabase';
 
 export async function POST(request) {
+  if (!isSupabaseReady()) {
+    return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 503 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');
@@ -13,15 +17,31 @@ export async function POST(request) {
     // Generar nombre único para el archivo
     const timestamp = Date.now();
     const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `gallery/${timestamp}.${ext}`;
+    const filePath = `${timestamp}.${ext}`;
 
-    const blob = await put(filename, file, {
-      access: 'public',
-      allowOverwrite: true,
-      token: process.env.BLOB_READ_WRITE_TOKEN
-    });
+    // Convertir el File a ArrayBuffer para Supabase
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    return NextResponse.json({ url: blob.url });
+    const { data, error } = await supabase.storage
+      .from('gallery')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error subiendo a Supabase Storage:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Obtener URL pública
+    const { data: publicData } = supabase.storage
+      .from('gallery')
+      .getPublicUrl(data.path);
+
+    return NextResponse.json({ url: publicData.publicUrl });
   } catch (error) {
     console.error('Error subiendo imagen:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

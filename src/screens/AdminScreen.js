@@ -170,7 +170,7 @@ export function AdminScreen() {
             {!dbStatus.hasToken && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 border border-red-200">
                 <p className="font-bold">⚠️ Base de datos no conectada</p>
-                <p className="text-sm">Vercel Blob no está funcionando. Los cambios no se guardarán. Haz "Redeploy" en Vercel para aplicar la conexión.</p>
+                <p className="text-sm">Supabase no está configurado. Los cambios no se guardarán. Configura las variables NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local.</p>
               </div>
             )}
             <div className="flex justify-between items-center mb-6">

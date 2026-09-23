@@ -1,92 +1,310 @@
-// Imports are done dynamically inside functions to support both
-// Vercel Blob (production) and local filesystem (development)
+// Módulo de base de datos usando Supabase
+// Las tablas deben existir en Supabase (ver supabase-schema.sql)
 
-const defaultData = {
-  services: [
-    { id: 1, name: "Extensiones Clásicas", category: "pestanas", price: 15000, deposit: 5000, duration: "90 min" },
-    { id: 2, name: "Volumen Ruso", category: "pestanas", price: 18000, deposit: 5000, duration: "120 min" },
-    { id: 3, name: "Perfilado y Laminado", category: "cejas", price: 8000, deposit: 3000, duration: "45 min" },
-    { id: 4, name: "Limpieza Facial Profunda", category: "cosmetologia", price: 12000, deposit: 4000, duration: "60 min" }
-  ],
-  appointments: [],
-  gallery: [],
-  availableSlots: [],
-  availability: {
-    startHour: "09:00",
-    endHour: "20:00",
-    slotDuration: 60,
-    blockedDays: [0],
-    blockedDates: []
-  }
-};
+import { supabase, isSupabaseReady } from './supabase';
 
-export async function getDb() {
-  const cloneDefault = () => JSON.parse(JSON.stringify(defaultData));
-  
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const { list } = await import('@vercel/blob');
-      const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
-      // Buscamos nuestro archivo único de base de datos
-      const dbBlob = blobs.find(b => b.pathname === 'database.json');
-      
-      if (dbBlob) {
-        const fetchUrl = dbBlob.downloadUrl || dbBlob.url;
-        // Blob público: no necesita Authorization, solo evitar caché
-        const response = await fetch(fetchUrl, { 
-          cache: 'no-store'
-        });
-        
-        if (!response.ok) {
-           console.error("Vercel Blob fetch failed:", response.status, await response.text());
-           return cloneDefault();
-        }
-        
-        return await response.json();
-      }
-      return cloneDefault();
-    } catch (e) {
-      console.error("Vercel Blob GET error:", e);
-      return cloneDefault();
-    }
-  } else {
-    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      console.warn("Falta BLOB_READ_WRITE_TOKEN en Vercel. Devolviendo datos por defecto.");
-      return cloneDefault();
-    }
-    const fs = await import('fs');
-    const path = await import('path');
-    const dataFile = path.join(process.cwd(), 'data.json');
-    if (!fs.existsSync(dataFile)) {
-      fs.writeFileSync(dataFile, JSON.stringify(defaultData, null, 2));
-      return cloneDefault();
-    }
-    return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+// ─── SERVICES ───────────────────────────────────────────────
+
+export async function getServices() {
+  if (!isSupabaseReady()) return [];
+
+  const { data, error } = await supabase
+    .from('services')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Error obteniendo servicios:', error);
+    return [];
   }
+  return data;
 }
 
-export async function saveDb(data) {
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const { put } = await import('@vercel/blob');
-      // Sobrescribimos siempre el mismo archivo para evitar desincronización
-      await put('database.json', JSON.stringify(data), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        token: process.env.BLOB_READ_WRITE_TOKEN
-      });
-    } catch (e) {
-      console.error("Vercel Blob PUT error:", e);
-    }
-  } else {
-    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      console.warn("Intento de guardar sin BLOB_READ_WRITE_TOKEN en producción. Ignorado para evitar crash.");
-      return;
-    }
-    const fs = await import('fs');
-    const path = await import('path');
-    const dataFile = path.join(process.cwd(), 'data.json');
-    fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+export async function createService(serviceData) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('services')
+    .insert({
+      name: serviceData.name,
+      category: serviceData.category,
+      price: Number(serviceData.price),
+      deposit: Number(serviceData.deposit),
+      duration: serviceData.duration,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creando servicio:', error);
+    return null;
   }
+  return data;
+}
+
+export async function updateService(id, updates) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('services')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error actualizando servicio:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteService(id) {
+  if (!isSupabaseReady()) return false;
+
+  const { error } = await supabase
+    .from('services')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error eliminando servicio:', error);
+    return false;
+  }
+  return true;
+}
+
+// ─── APPOINTMENTS ───────────────────────────────────────────
+
+export async function getAppointments() {
+  if (!isSupabaseReady()) return [];
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error obteniendo turnos:', error);
+    return [];
+  }
+  return data;
+}
+
+export async function createAppointment(appointmentData) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .insert({
+      client_name: appointmentData.clientName,
+      client_phone: appointmentData.clientPhone,
+      client_email: appointmentData.clientEmail || null,
+      service_id: appointmentData.serviceId,
+      service_name: appointmentData.serviceName,
+      date: appointmentData.date,
+      time: appointmentData.time,
+      deposit_amount: appointmentData.depositAmount || 0,
+      status: 'PENDING',
+      notes: appointmentData.notes || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creando turno:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function updateAppointment(id, updates) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error actualizando turno:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteAppointment(id) {
+  if (!isSupabaseReady()) return false;
+
+  const { error } = await supabase
+    .from('appointments')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error eliminando turno:', error);
+    return false;
+  }
+  return true;
+}
+
+// ─── GALLERY ────────────────────────────────────────────────
+
+export async function getGallery() {
+  if (!isSupabaseReady()) return [];
+
+  const { data, error } = await supabase
+    .from('gallery')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error obteniendo galería:', error);
+    return [];
+  }
+  return data;
+}
+
+export async function addGalleryItem(itemData) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('gallery')
+    .insert({
+      title: itemData.title || null,
+      description: itemData.description || null,
+      image_url: itemData.imageUrl,
+      category: itemData.category || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error agregando a galería:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteGalleryItem(id) {
+  if (!isSupabaseReady()) return false;
+
+  const { error } = await supabase
+    .from('gallery')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error eliminando de galería:', error);
+    return false;
+  }
+  return true;
+}
+
+// ─── AVAILABLE SLOTS ────────────────────────────────────────
+
+export async function getAvailableSlots() {
+  if (!isSupabaseReady()) return [];
+
+  const { data, error } = await supabase
+    .from('available_slots')
+    .select('*')
+    .order('date', { ascending: true });
+
+  if (error) {
+    console.error('Error obteniendo horarios:', error);
+    return [];
+  }
+  return data;
+}
+
+export async function saveAvailableSlots(date, times) {
+  if (!isSupabaseReady()) return null;
+
+  // Upsert: si ya existe una fila para esa fecha, la actualiza; si no, la crea
+  const { data, error } = await supabase
+    .from('available_slots')
+    .upsert(
+      { date, times },
+      { onConflict: 'date' }
+    )
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error guardando horarios:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteAvailableSlot(date) {
+  if (!isSupabaseReady()) return false;
+
+  const { error } = await supabase
+    .from('available_slots')
+    .delete()
+    .eq('date', date);
+
+  if (error) {
+    console.error('Error eliminando horario:', error);
+    return false;
+  }
+  return true;
+}
+
+// ─── AVAILABILITY CONFIG ────────────────────────────────────
+
+export async function getAvailability() {
+  if (!isSupabaseReady()) {
+    return {
+      start_hour: '09:00',
+      end_hour: '20:00',
+      slot_duration: 60,
+      blocked_days: [0],
+      blocked_dates: [],
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('availability_config')
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error obteniendo configuración de disponibilidad:', error);
+    return {
+      start_hour: '09:00',
+      end_hour: '20:00',
+      slot_duration: 60,
+      blocked_days: [0],
+      blocked_dates: [],
+    };
+  }
+  return data;
+}
+
+export async function saveAvailability(config) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await supabase
+    .from('availability_config')
+    .upsert({
+      id: 1,
+      start_hour: config.startHour || config.start_hour,
+      end_hour: config.endHour || config.end_hour,
+      slot_duration: config.slotDuration || config.slot_duration,
+      blocked_days: config.blockedDays || config.blocked_days,
+      blocked_dates: config.blockedDates || config.blocked_dates,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error guardando configuración de disponibilidad:', error);
+    return null;
+  }
+  return data;
 }
